@@ -1,0 +1,263 @@
+<modification>
+	<name>VMSK Modules to products</name>
+	<code>vmsk_modules_to_products</code>
+	<version>1.0</version>
+	<author>VMSK</author>
+
+	<file path="admin/view/template/catalog/product_form.twig">
+		<operation>
+			<search trim="true"><![CDATA[
+				<li><a href="#tab-design" data-toggle="tab">{{ tab_design }}</a></li>
+			]]></search>
+			<add position="before"><![CDATA[
+				<li><a href="#tab-modules" data-toggle="tab">Модули</a></li>
+			]]></add>
+		</operation>
+
+		<operation>
+			<search trim="true"><![CDATA[
+				<div class="tab-pane" id="tab-design">
+			]]></search>
+			<add position="before"><![CDATA[
+				<div class="tab-pane" id="tab-modules">
+					<div class="table-responsive">
+						<table id="modules" class="table table-striped table-bordered table-hover">
+							<thead>
+								<tr>
+									<td class="text-left">Названия модуля</td>
+									<td class="text-left">Позиция</td>
+									<td class="text-right">Порядок сортировки</td>
+									<td></td>
+								</tr>
+							</thead>
+							<tbody>
+
+								{% set module_row = 0 %}
+								{% for module in vmsk_modules %}
+									<tr id="module-row{{ module_row }}">
+										<td class="text-left">
+											<select name="vmsk_modules[{{ module_row }}][module_id]" class="form-control">
+												<option value=""></option>
+												{% for item in vmsk_modules_all %}
+													{% if item.module_id == module.module_id %}
+														<option value="{{ item.module_id }}" selected="selected">{{ item.name }}</option>
+													{% else %}
+														<option value="{{ item.module_id }}">{{ item.name }}</option>
+													{% endif %}
+												{% endfor %}
+											</select>
+										</td>
+										<td class="text-right">
+											<select name="vmsk_modules[{{ module_row }}][position]" class="form-control">
+												<option value=""></option>
+												{% for position in vmsk_position %}
+													{% if position.position == module.position %}
+														<option value="{{ position.position }}" selected="selected">{{ position.name }}</option>
+													{% else %}
+														<option value="{{ position.position }}">{{ position.name }}</option>
+													{% endif %}
+												{% endfor %}
+											</select>
+										</td>
+										<td class="text-right">
+											<input type="text" name="vmsk_modules[{{ module_row }}][sort_order]" value="{{ module.sort_order }}" placeholder="Порядок сортировки" class="form-control"/>
+										</td>
+										<td class="text-left"><button type="button" onclick="$('#module-row{{ module_row }}').remove();" data-toggle="tooltip" title="{{ button_remove }}" class="btn btn-danger"><i class="fa fa-minus-circle"></i></button></td>
+									</tr>
+									{% set module_row = module_row + 1 %}
+								{% endfor %}
+							</tbody>
+
+							<tfoot>
+								<tr>
+									<td colspan="3"></td>
+									<td class="text-left">
+										<button type="button" onclick="addModule();" data-toggle="tooltip" title="{{ button_image_add }}" class="btn btn-primary"><i class="fa fa-plus-circle"></i></button>
+									</td>
+								</tr>
+							</tfoot>
+						</table>
+					</div>
+				</div>
+			]]></add>
+		</operation>
+
+		<operation>
+			<search trim="true"><![CDATA[
+				{{ footer }}
+			]]></search>
+			<add position="before"><![CDATA[
+				<script type="text/javascript"><!--
+					var module_row = {{ module_row }};
+
+					function addModule() {
+						html = '<tr id="module-row' + module_row + '">';
+						html += 	'<td class="text-left">';
+						html += 		'<select name="vmsk_modules[' + module_row + '][module_id]" class="form-control">';
+						html += 			'<option value=""></option>';
+											{% for item in vmsk_modules_all %}
+						html += 				'<option value="{{ item.module_id }}">{{ item.name }}</option>';
+											{% endfor %}
+						html += 		'</select>';
+						html += 	'</td>';
+						html += 	'<td class="text-right">';
+						html += 		'<select name="vmsk_modules[' + module_row + '][position]" class="form-control">';
+						html += 			'<option value=""></option>';
+											{% for position in vmsk_position %}
+						html += 				'<option value="{{ position.position }}">{{ position.name }}</option>';
+											{% endfor %}
+						html += 		'</select>';
+						html += 	'</td>';
+						html += 	'<td class="text-right">';
+						html += 		'<input type="text" name="vmsk_modules[' + module_row + '][sort_order]" value="" placeholder="Порядок сортировки" class="form-control"/>';
+						html += 	'</td>';
+						html += 	'<td class="text-left">';
+						html += 		'<button type="button" onclick="$(\'#module-row' + module_row + '\').remove();" data-toggle="tooltip" title="{{ button_remove }}" class="btn btn-danger"><i class="fa fa-minus-circle"></i></button>';
+						html += 	'</td>';
+						html += '</tr>';
+
+						$('#modules tbody').append(html);
+
+						module_row++;
+					}
+				//--></script>
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/catalog/product.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				$this->response->setOutput($this->load->view('catalog/product_form', $data));
+			]]></search>
+			<add position="before"><![CDATA[
+				// Modules
+				$this->load->model('setting/module');
+				$data['vmsk_modules_all'] = $this->model_setting_module->getModules();
+
+				if (isset($this->request->post['vmsk_modules'])) {
+					$data['vmsk_modules'] = $this->request->post['vmsk_modules'];
+				} elseif (isset($this->request->get['product_id'])) {
+					$data['vmsk_modules'] = $this->model_catalog_product->getProductModules($this->request->get['product_id']);
+				} else {
+					$data['vmsk_modules'] = array();
+				}
+
+				$data['vmsk_position'] = array(
+					array(
+						'position' => 'content_top',
+						'name' => 'Content Top',
+					),
+					array(
+						'position' => 'content_bottom',
+						'name' => 'Content Bottom',
+					),
+					array(
+						'position' => 'column_right',
+						'name' => 'Сolumn Right',
+					),
+				);
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/model/catalog/product.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				public function getTotalProductsByLayoutId($layout_id) {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function getProductModules($product_id) {
+					$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "product_module WHERE product_id = '" . (int)$product_id . "' ORDER BY sort_order ASC");
+
+					return $query->rows;
+				}
+			]]></add>
+		</operation>
+
+		<operation>
+			<search trim="true"><![CDATA[
+				if (isset($data['product_layout'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				$this->db->query("DELETE FROM " . DB_PREFIX . "product_module WHERE product_id = '" . (int)$product_id . "'");
+
+				if (isset($data['vmsk_modules'])) {
+					foreach ($data['vmsk_modules'] as $module) {
+						$this->db->query("INSERT INTO " . DB_PREFIX . "product_module SET product_id = '" . (int)$product_id . "', module_id = '" . (int)$module['module_id'] . "', position = '" . $this->db->escape($module['position']) . "', sort_order = '" . (int)$module['sort_order'] . "'");
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/product/product.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				$this->response->setOutput($this->load->view('product/product', $data));
+			]]></search>
+			<add position="before"><![CDATA[
+				// Modules
+				$data['vmsk_content_top'] = array();
+				$data['vmsk_content_bottom'] = array();
+				$data['vmsk_column_right'] = array();
+
+				$vmsk_modules = $this->model_catalog_product->getProductModules($product_id);
+				if ( $vmsk_modules ) {
+					foreach ( $vmsk_modules as $module ) {
+						$setting_info = $this->model_setting_module->getModule( $module['module_id'] );
+						$module_info = $this->model_setting_module->getModuleInfo( $module['module_id'] );
+
+						if ( $setting_info && $setting_info['status'] && $module_info['code'] ){
+							$output = $this->load->controller('extension/module/' . $module_info['code'], $setting_info);
+
+							if ($output) {
+								switch ($module['position']) {
+									case 'content_top':
+										$data['vmsk_content_top'][] = $output;
+										break;
+									case 'content_bottom':
+										$data['vmsk_content_bottom'][] = $output;
+										break;
+									case 'column_right':
+										$data['vmsk_column_right'][] = $output;
+										break;
+								}
+							}
+						}
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/catalog/product.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				public function getTotalProductSpecials() {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function getProductModules($product_id) {
+					$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "product_module WHERE product_id = '" . (int)$product_id . "' ORDER BY sort_order ASC");
+
+					return $query->rows;
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/setting/module.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				public function getModule($module_id) {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function getModuleInfo($module_id) {
+					$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "module WHERE module_id = '" . (int)$module_id . "'");
+
+					return $query->row;
+				}
+			]]></add>
+		</operation>
+	</file>
+</modification>
