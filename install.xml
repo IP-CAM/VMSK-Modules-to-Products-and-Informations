@@ -1,10 +1,10 @@
 <modification>
-	<name>VMSK Modules to products</name>
-	<code>vmsk_modules_to_products</code>
+	<name>VMSK Modules to products and informations</name>
+	<code>vmsk_modules_to_p_and_i</code>
 	<version>1.0</version>
 	<author>VMSK</author>
 
-	<file path="admin/view/template/catalog/product_form.twig">
+	<file path="admin/view/template/catalog/{product_form,information_form}.twig">
 		<operation>
 			<search trim="true"><![CDATA[
 				<li><a href="#tab-design" data-toggle="tab">{{ tab_design }}</a></li>
@@ -256,6 +256,127 @@
 					$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "module WHERE module_id = '" . (int)$module_id . "'");
 
 					return $query->row;
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/controller/catalog/information.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				$this->response->setOutput($this->load->view('catalog/information_form', $data));
+			]]></search>
+			<add position="before"><![CDATA[
+				// Modules
+				$this->load->model('setting/module');
+				$data['vmsk_modules_all'] = $this->model_setting_module->getModules();
+
+				if (isset($this->request->post['vmsk_modules'])) {
+					$data['vmsk_modules'] = $this->request->post['vmsk_modules'];
+				} elseif (isset($this->request->get['information_id'])) {
+					$data['vmsk_modules'] = $this->model_catalog_information->getInformationModules($this->request->get['information_id']);
+				} else {
+					$data['vmsk_modules'] = array();
+				}
+
+				$data['vmsk_position'] = array(
+					array(
+						'position' => 'content_top',
+						'name' => 'Content Top',
+					),
+					array(
+						'position' => 'content_bottom',
+						'name' => 'Content Bottom',
+					),
+					array(
+						'position' => 'column_right',
+						'name' => 'Сolumn Right',
+					),
+				);
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="admin/model/catalog/information.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				public function getTotalInformationsByLayoutId($layout_id) {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function getInformationModules($information_id) {
+					$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "information_module WHERE information_id = '" . (int)$information_id . "' ORDER BY sort_order ASC");
+
+					return $query->rows;
+				}
+			]]></add>
+		</operation>
+
+		<operation>
+			<search trim="true"><![CDATA[
+				if (isset($data['information_layout'])) {
+			]]></search>
+			<add position="before"><![CDATA[
+				$this->db->query("DELETE FROM " . DB_PREFIX . "information_module WHERE information_id = '" . (int)$information_id . "'");
+
+				if (isset($data['vmsk_modules'])) {
+					foreach ($data['vmsk_modules'] as $module) {
+						$this->db->query("INSERT INTO " . DB_PREFIX . "information_module SET information_id = '" . (int)$information_id . "', module_id = '" . (int)$module['module_id'] . "', position = '" . $this->db->escape($module['position']) . "', sort_order = '" . (int)$module['sort_order'] . "'");
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/controller/information/information.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				$this->response->setOutput($this->load->view('information/information', $data));
+			]]></search>
+			<add position="before"><![CDATA[
+				// Modules
+				$data['vmsk_content_top'] = array();
+				$data['vmsk_content_bottom'] = array();
+				$data['vmsk_column_right'] = array();
+
+				$vmsk_modules = $this->model_catalog_information->getInformationModules($information_id);
+				if ( $vmsk_modules ) {
+					foreach ( $vmsk_modules as $module ) {
+						$setting_info = $this->model_setting_module->getModule( $module['module_id'] );
+						$module_info = $this->model_setting_module->getModuleInfo( $module['module_id'] );
+
+						if ( $setting_info && $setting_info['status'] && $module_info['code'] ){
+							$output = $this->load->controller('extension/module/' . $module_info['code'], $setting_info);
+
+							if ($output) {
+								switch ($module['position']) {
+									case 'content_top':
+										$data['vmsk_content_top'][] = $output;
+										break;
+									case 'content_bottom':
+										$data['vmsk_content_bottom'][] = $output;
+										break;
+									case 'column_right':
+										$data['vmsk_column_right'][] = $output;
+										break;
+								}
+							}
+						}
+					}
+				}
+			]]></add>
+		</operation>
+	</file>
+
+	<file path="catalog/model/catalog/information.php">
+		<operation>
+			<search trim="true"><![CDATA[
+				public function getInformationLayoutId($information_id) {
+			]]></search>
+			<add position="before"><![CDATA[
+				public function getInformationModules($information_id) {
+					$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "information_module WHERE information_id = '" . (int)$information_id . "' ORDER BY sort_order ASC");
+
+					return $query->rows;
 				}
 			]]></add>
 		</operation>
