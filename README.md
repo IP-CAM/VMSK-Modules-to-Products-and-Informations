@@ -44,7 +44,7 @@
 
 4. Вставьте следующий код в место, где хотите отображать модуль:
 
-```php
+```twig
 	{% if vmsk_column_right %}
 		{% for module_right in vmsk_column_right %}
 			{{ module_right }}
